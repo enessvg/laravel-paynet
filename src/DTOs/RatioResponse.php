@@ -116,7 +116,7 @@ class Bank
         }
 
         return new self(
-            bankId: $json->bank_id ?? null,
+            bankId: isset($json->bank_id) ? (int) $json->bank_id : null,
             bankLogo: $json->bank_logo ?? null,
             bankName: $json->bank_name ?? null,
             ratios: $ratios,
@@ -144,7 +144,7 @@ class Ratio
         return new self(
             ratio: isset($json->ratio) ? (float) $json->ratio : null,
             instalmentKey: $json->instalment_key ?? null,
-            instalment: $json->instalment ?? null,
+            instalment: isset($json->instalment) ? (int) $json->instalment : null,
             instalmentAmount: $json->instalment_amount ?? null,
             totalNetAmount: $json->total_net_amount ?? null,
             totalAmount: $json->total_amount ?? null,
