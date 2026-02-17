@@ -1,0 +1,51 @@
+{
+    "name": "enessvg/laravel-paynet",
+    "description": "Paynet Payment Gateway Laravel SDK",
+    "keywords": ["paynet", "payment", "laravel", "gateway", "credit-card", "pos"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Enes SVG",
+            "email": "enessvg4@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0|^11.0",
+        "orchestra/testbench": "^8.0|^9.0|^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Paynet\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Paynet\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Paynet\\PaynetServiceProvider"
+            ],
+            "aliases": {
+                "Paynet": "Paynet\\Facades\\Paynet"
+            }
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "support": {
+        "issues": "https://github.com/enessvg/laravel-paynet/issues",
+        "source": "https://github.com/enessvg/laravel-paynet"
+    }
+}
