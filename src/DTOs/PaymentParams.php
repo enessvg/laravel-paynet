@@ -22,7 +22,7 @@ class PaymentParams
         public ?string $companyAmount = null,
         public bool $addCommission = false,
         public ?string $ratioCode = null,
-        public int $instalment = 0,
+        public int|null $instalment = null,
         public bool $mergeOption = false,
         public ?string $ratioCodeMethod = null,
         public ?string $domain = null,
