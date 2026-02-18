@@ -1,6 +1,6 @@
 # Laravel Paynet
 
-Paynet Payment Gateway için Laravel paketi. PHP 8.1+ ve Laravel 10/11 uyumlu.
+Paynet Payment Gateway için Laravel paketi. PHP 8.2+ ve Laravel 10/11/12 uyumlu.
 
 ## Kurulum
 
