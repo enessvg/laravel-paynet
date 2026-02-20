@@ -308,15 +308,9 @@ try {
 ```
 
 ## Test Kartları
+Altta ki linkten detaylı bir şekilde ulaşabilirsiniz
 
-| Kart Numarası | Sonuç |
-|---------------|-------|
-| 5400617004770430 | Başarılı |
-| 4355084355084358 | Başarılı |
-| 4024007112104849 | Başarısız |
-
-Test CVC: 123  
-Test Son Kullanma: Gelecek herhangi bir tarih (örn: 12/25)
+https://doc.paynet.com.tr/genel-bilgiler/test-kartlari
 
 ## Lisans
 
