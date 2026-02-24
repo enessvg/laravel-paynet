@@ -2,161 +2,114 @@
 
 namespace Paynet;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
 use Paynet\DTOs\{
     ChargeParams,
-    ChargeResponse,
     CheckTransactionParams,
-    CheckTransactionResponse,
     MailOrderParams,
-    MailOrderResponse,
     PaymentParams,
-    PaymentResponse,
     RatioParams,
-    RatioResponse,
     ReversedRequestParams,
     TdsChargeParams,
-    TdsChargeResponse,
-    TdsInitialParams,
-    TdsInitialResponse
+    TdsInitialParams
 };
-use Paynet\Enums\ResultCode;
 
 class PaynetClient
 {
     private const TEST_URL = 'https://pts-api.paynet.com.tr/';
     private const LIVE_URL = 'https://api.paynet.com.tr/';
 
-    private Client $httpClient;
     private string $baseUrl;
 
     public function __construct(
         private readonly string $secretKey,
         private readonly bool $isLive = false,
-        ?Client $httpClient = null,
     ) {
         $this->baseUrl = $this->isLive ? self::LIVE_URL : self::TEST_URL;
-        $this->httpClient = $httpClient ?? new Client([
-            'base_uri' => $this->baseUrl,
-            'timeout' => 30,
-            'verify' => true,
-        ]);
     }
 
     /**
      * API'ye istek gönderir
-     * 
-     * @return object API yanıtı (başarılı/başarısız fark etmez)
      */
-    private function request(string $endpoint, array|object $data): object
+    private function request(string $endpoint, array|object $data): Response
     {
-        try {
-            $response = $this->httpClient->post($endpoint, [
-                'headers' => [
-                    'Authorization' => 'Basic ' . $this->secretKey,
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json; charset=UTF-8',
-                ],
-                'json' => $data instanceof \JsonSerializable ? $data : (array) $data,
-                'http_errors' => false,
-            ]);
+        $timeout = config('paynet.timeout', 30);
+        $verify = config('paynet.verify_ssl', true);
 
-            $body = $response->getBody()->getContents();
-            $result = json_decode($body);
-
-            // JSON decode başarısız olursa hata objesi döndür
-            if ($result === null) {
-                return (object) [
-                    'code' => ResultCode::ServerError->value,
-                    'message' => 'Geçersiz JSON yanıtı',
-                ];
-            }
-
-            return $result;
-
-        } catch (GuzzleException $e) {
-            // Bağlantı hatası durumunda hata objesi döndür
-            return (object) [
-                'code' => ResultCode::ServerError->value,
-                'message' => $e->getMessage(),
-            ];
-        }
+        return Http::baseUrl($this->baseUrl)
+            ->withHeaders([
+                'Authorization' => 'Basic ' . $this->secretKey,
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json; charset=UTF-8',
+            ])
+            ->timeout($timeout)
+            ->withOptions([
+                'verify' => $verify,
+            ])
+            ->post($endpoint, $data instanceof \JsonSerializable ? $data : (array) $data);
     }
 
     /**
      * V2 Payment - 3D Secure olmadan direkt ödeme
      */
-    public function payment(PaymentParams $params): PaymentResponse
+    public function payment(PaymentParams $params): Response
     {
-        $result = $this->request('v2/transaction/payment', $params->toArray());
-        return PaymentResponse::fromJson($result);
+        return $this->request('v2/transaction/payment', $params->toArray());
     }
 
     /**
      * V2 TDS Initial - 3D Secure başlatma
      */
-    public function tdsInitial(TdsInitialParams $params): TdsInitialResponse
+    public function tdsInitial(TdsInitialParams $params): Response
     {
-        $result = $this->request('v2/transaction/tds_initial', $params->toArray());
-        return TdsInitialResponse::fromJson($result);
+        return $this->request('v2/transaction/tds_initial', $params->toArray());
     }
 
     /**
      * V2 TDS Charge - 3D Secure sonrası ödeme onaylama
      */
-    public function tdsCharge(TdsChargeParams $params): TdsChargeResponse
+    public function tdsCharge(TdsChargeParams $params): Response
     {
-        $result = $this->request('v2/transaction/tds_charge', $params->toArray());
-        return TdsChargeResponse::fromJson($result);
+        return $this->request('v2/transaction/tds_charge', $params->toArray());
     }
 
     /**
      * V1 Charge - Paynet JS widget sonrası ödeme onaylama
      */
-    public function charge(ChargeParams $params): ChargeResponse
+    public function charge(ChargeParams $params): Response
     {
-        $result = $this->request('v1/transaction/charge', $params->toArray());
-        return ChargeResponse::fromJson($result);
+        return $this->request('v1/transaction/charge', $params->toArray());
     }
 
     /**
      * İşlem sorgulama
      */
-    public function checkTransaction(CheckTransactionParams $params): CheckTransactionResponse
+    public function checkTransaction(CheckTransactionParams $params): Response
     {
-        $result = $this->request('v1/transaction/check', $params->toArray());
-
-        // API başarılı ise Data[0]'ı kullan
-        if (isset($result->code) && (int) $result->code === ResultCode::Successful->value && isset($result->Data[0])) {
-            $result = $result->Data[0];
-        }
-
-        return CheckTransactionResponse::fromJson($result);
+        return $this->request('v1/transaction/check', $params->toArray());
     }
 
     /**
      * Oran/Taksit bilgilerini getir
      */
-    public function getRatios(RatioParams $params): RatioResponse
+    public function getRatios(RatioParams $params): Response
     {
-        $result = $this->request('v1/ratio/Get', $params->toArray());
-        return RatioResponse::fromJson($result);
+        return $this->request('v1/ratio/Get', $params->toArray());
     }
 
     /**
      * Mail/SMS ile ödeme linki oluştur
      */
-    public function createMailOrder(MailOrderParams $params): MailOrderResponse
+    public function createMailOrder(MailOrderParams $params): Response
     {
-        $result = $this->request('v1/mailorder/create', $params->toArray());
-        return MailOrderResponse::fromJson($result);
+        return $this->request('v1/mailorder/create', $params->toArray());
     }
 
     /**
      * İade/İptal talebi
      */
-    public function reversedRequest(ReversedRequestParams $params): object
+    public function reversedRequest(ReversedRequestParams $params): Response
     {
         return $this->request('v1/transaction/reversed_request', $params->toArray());
     }
@@ -164,7 +117,7 @@ class PaynetClient
     /**
      * İşlemi transfer edildi olarak işaretle
      */
-    public function markTransferred(array $params): object
+    public function markTransferred(array $params): Response
     {
         return $this->request('v1/transaction/mark_transferred', $params);
     }
@@ -172,7 +125,7 @@ class PaynetClient
     /**
      * İşlem detaylarını getir
      */
-    public function getTransactionDetail(array $params): object
+    public function getTransactionDetail(array $params): Response
     {
         return $this->request('v1/transaction/detail', $params);
     }
@@ -180,7 +133,7 @@ class PaynetClient
     /**
      * İşlem listesi
      */
-    public function listTransactions(array $params = []): object
+    public function listTransactions(array $params = []): Response
     {
         $defaults = [
             'agent_id' => '',
@@ -199,7 +152,7 @@ class PaynetClient
     /**
      * Otomatik giriş linki oluştur
      */
-    public function autoLogin(string $userName, ?string $agentId = null): object
+    public function autoLogin(string $userName, ?string $agentId = null): Response
     {
         return $this->request('v1/agent/autologin', [
             'user_name' => $userName,
@@ -210,7 +163,7 @@ class PaynetClient
     /**
      * Entegrasyon bilgilerini kontrol et
      */
-    public function checkIntegration(string $agentId, string $publishableKey, string $secretKey): object
+    public function checkIntegration(string $agentId, string $publishableKey, string $secretKey): Response
     {
         return $this->request('v1/agent/check_integration_info', [
             'agent_id' => $agentId,

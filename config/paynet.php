@@ -61,4 +61,15 @@ return [
     |
     */
     'tds_return_url' => env('PAYNET_TDS_RETURN_URL', ''),
+
+    /*
+    |--------------------------------------------------------------------------
+    | HTTP Ayarları
+    |--------------------------------------------------------------------------
+    |
+    | HTTP isteği için timeout ve SSL doğrulama ayarları.
+    |
+    */
+    'timeout' => env('PAYNET_TIMEOUT', 30),
+    'verify_ssl' => env('PAYNET_VERIFY_SSL', true),
 ];
