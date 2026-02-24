@@ -43,6 +43,22 @@ class PaynetTools
     }
 
     /**
+     * Tutarı kuruş cinsine çevirir (1 -> 100, 100 -> 10000)
+     * Nokta veya virgül varsa dikkate alır, yoksa doğrudan 100 ile çarpar.
+     * Sadece rakam döndürür.
+     */
+    public static function amountToCentsInt(float|int|string $amount): int
+    {
+        if (is_string($amount) && (str_contains($amount, ',') || str_contains($amount, '.')))
+        {
+            $amount = str_replace(',', '.', $amount);
+            return (int) round((float) $amount * 100);
+        }
+        
+        return (int) round((float) $amount * 100);
+    }
+
+    /**
      * Kart numarasını maskeler
      */
     public static function maskCardNumber(string $cardNumber): string
