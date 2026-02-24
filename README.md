@@ -48,7 +48,7 @@ $params = new PaymentParams(
 
 $result = Paynet::payment($params);
 
-if ($result->isSucceed) {
+if ($result->code === 0) {
     // Ödeme başarılı
     $transactionId = $result->xactId;
 } else {
@@ -147,17 +147,17 @@ $params = new RatioParams(
 
 $result = Paynet::getRatios($params);
 
-if ($result->isSuccessful()) {
+if ($result->code === 0 && isset($result->banks)) {
     foreach ($result->banks as $bank) {
         echo "Banka: {$bank->bankName}\n";
-        
         foreach ($bank->ratios as $ratio) {
             echo "  {$ratio->instalment} Taksit: %{$ratio->ratio}\n";
         }
     }
-    
     // Veya HTML tablo olarak
-    echo $result->toHtmlTable();
+    // echo $result->toHtmlTable();
+} else {
+    echo $result->message;
 }
 ```
 

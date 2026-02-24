@@ -22,7 +22,6 @@ use Paynet\DTOs\{
     TdsInitialResponse
 };
 use Paynet\Enums\ResultCode;
-use Paynet\Exceptions\PaynetException;
 
 class PaynetClient
 {
@@ -48,7 +47,7 @@ class PaynetClient
     /**
      * API'ye istek gönderir
      * 
-     * @throws PaynetException
+     * @return object API yanıtı (başarılı/başarısız fark etmez)
      */
     private function request(string $endpoint, array|object $data): object
     {
@@ -60,18 +59,28 @@ class PaynetClient
                     'Accept' => 'application/json; charset=UTF-8',
                 ],
                 'json' => $data instanceof \JsonSerializable ? $data : (array) $data,
+                'http_errors' => false,
             ]);
 
             $body = $response->getBody()->getContents();
             $result = json_decode($body);
 
+            // JSON decode başarısız olursa hata objesi döndür
             if ($result === null) {
-                throw PaynetException::connectionError($this->baseUrl . $endpoint, 'Geçersiz JSON yanıtı');
+                return (object) [
+                    'code' => ResultCode::ServerError->value,
+                    'message' => 'Geçersiz JSON yanıtı',
+                ];
             }
 
             return $result;
+
         } catch (GuzzleException $e) {
-            throw PaynetException::connectionError($this->baseUrl . $endpoint, $e->getMessage());
+            // Bağlantı hatası durumunda hata objesi döndür
+            return (object) [
+                'code' => ResultCode::ServerError->value,
+                'message' => $e->getMessage(),
+            ];
         }
     }
 
