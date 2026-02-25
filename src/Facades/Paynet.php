@@ -18,6 +18,8 @@ use Paynet\PaynetClient;
  * @method static \Illuminate\Http\Client\Response getTransactionDetail(array $params)
  * @method static \Illuminate\Http\Client\Response saveCard(\Paynet\DTOs\SaveCardParams $params)
  * @method static \Illuminate\Http\Client\Response deleteCard(\Paynet\DTOs\DeleteCardParams $params)
+ * @method static \Illuminate\Http\Client\Response updateCardDescription(\Paynet\DTOs\CardDescUpdateParams $params)
+ * @method static \Illuminate\Http\Client\Response listCards(\Paynet\DTOs\CardListParams $params)
  * @method static \Illuminate\Http\Client\Response listTransactions(array $params = [])
  * @method static \Illuminate\Http\Client\Response autoLogin(string $userName, ?string $agentId = null)
  * @method static \Illuminate\Http\Client\Response checkIntegration(string $agentId, string $publishableKey, string $secretKey)

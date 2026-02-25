@@ -5,6 +5,8 @@ namespace Paynet;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Paynet\DTOs\{
+    CardDescUpdateParams,
+    CardListParams,
     ChargeParams,
     CheckTransactionParams,
     DeleteCardParams,
@@ -146,6 +148,22 @@ class PaynetClient
     public function deleteCard(DeleteCardParams $params): Response
     {
         return $this->request('v1/card/delete', $params->toArray());
+    }
+
+    /**
+     * Sakli kartin aciklamasini guncelle
+     */
+    public function updateCardDescription(CardDescUpdateParams $params): Response
+    {
+        return $this->request('v1/card/desc_update', $params->toArray());
+    }
+
+    /**
+     * Sakli kartlari listele
+     */
+    public function listCards(CardListParams $params): Response
+    {
+        return $this->request('v1/card/list', $params->toArray());
     }
 
     /**
