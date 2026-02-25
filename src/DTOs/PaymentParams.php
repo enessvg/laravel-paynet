@@ -2,19 +2,19 @@
 
 namespace Paynet\DTOs;
 
-use Paynet\Enums\PosType;
 use Paynet\Enums\TransactionType;
 
 class PaymentParams
 {
     public function __construct(
         public string $amount,
-        public string $pan,
-        public string $month,
-        public string $year,
-        public string $cvc,
+        public string $referenceNo,
+        public string $domain,
+        public ?string $pan = null,
+        public ?string $month = null,
+        public ?string $year = null,
+        public ?string $cvc = null,
         public ?string $cardHolder = null,
-        public ?string $referenceNo = null,
         public ?string $agentReferenceNo = null,
         public ?string $agentId = null,
         public ?string $userId = null,
@@ -25,7 +25,6 @@ class PaymentParams
         public int|null $instalment = null,
         public bool $mergeOption = false,
         public ?string $ratioCodeMethod = null,
-        public ?string $domain = null,
         public bool $approvedCard = false,
         public bool $dontApplyCampaign = false,
         public bool $isEscrow = false,

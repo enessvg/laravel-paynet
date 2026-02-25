@@ -37,12 +37,13 @@ use Paynet\Support\PaynetTools;
 // Direkt ödeme (3D Secure olmadan)
 $params = new PaymentParams(
     amount: PaynetTools::formatWithDecimalSeparator(123.45),
+    referenceNo: PaynetTools::generateReferenceNo('ORD-'),
+    domain: 'www.acme.com',
     pan: '5400617004770430',
     month: '12',
     year: '25',
     cvc: '123',
     cardHolder: 'John Doe',
-    referenceNo: PaynetTools::generateReferenceNo('ORD-'),
     instalment: 1,
 );
 
@@ -73,6 +74,8 @@ class PaymentController extends Controller
     {
         $params = new PaymentParams(
             amount: '123,45',
+            referenceNo: PaynetTools::generateReferenceNo('ORD-'),
+            domain: 'www.acme.com',
             pan: $request->card_number,
             month: $request->expire_month,
             year: $request->expire_year,
@@ -96,13 +99,14 @@ use Paynet\Enums\ResultCode;
 // Adım 1: 3D Secure başlat
 $params = new TdsInitialParams(
     amount: '123,45',
+    referenceNo: PaynetTools::generateReferenceNo('ORD-'),
+    domain: 'www.acme.com',
+    returnUrl: config('paynet.tds_return_url'),
     pan: '5400617004770430',
     month: '12',
     year: '25',
     cvc: '123',
-    returnUrl: route('payment.callback'),
     cardHolder: 'John Doe',
-    referenceNo: 'ORD-12345',
 );
 
 $result = Paynet::tdsInitial($params);
@@ -120,8 +124,8 @@ if ($result->code === ResultCode::Successful) {
 public function callback(Request $request)
 {
     $params = new TdsChargeParams(
-        sessionId: session('paynet_session_id'),
-        tokenId: session('paynet_token_id'),
+        sessionId: $request->paynet_session_id,
+        tokenId: $request->paynet_token_id,
     );
 
     $result = Paynet::tdsCharge($params);
