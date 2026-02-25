@@ -16,7 +16,9 @@ use Paynet\DTOs\{
     ReversedRequestParams,
     SaveCardParams,
     TdsChargeParams,
-    TdsInitialParams
+    TdsInitialParams,
+    SavedCardOtpParams,
+    SavedCardOtpCheckParams
 };
 
 class PaynetClient
@@ -164,6 +166,22 @@ class PaynetClient
     public function listCards(CardListParams $params): Response
     {
         return $this->request('v1/card/list', $params->toArray());
+    }
+
+    /**
+     * Sakli Kart - OTP Gönderme
+     */
+    public function sendOtpForSavedCard(SavedCardOtpParams $params): Response
+    {
+        return $this->request('v1/card/send_otp', $params->toArray());
+    }
+
+    /**
+     * Sakli Kart - OTP Kontrol
+     */
+    public function checkOtpForSavedCard(SavedCardOtpCheckParams $params): Response
+    {
+        return $this->request('v1/card/check_otp', $params->toArray());
     }
 
     /**
