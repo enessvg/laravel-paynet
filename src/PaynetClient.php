@@ -11,6 +11,7 @@ use Paynet\DTOs\{
     PaymentParams,
     RatioParams,
     ReversedRequestParams,
+    SaveCardParams,
     TdsChargeParams,
     TdsInitialParams
 };
@@ -128,6 +129,14 @@ class PaynetClient
     public function getTransactionDetail(array $params): Response
     {
         return $this->request('v1/transaction/detail', $params);
+    }
+
+    /**
+     * Kart Bilgisi Saklama
+     */
+    public function saveCard(SaveCardParams $params): Response
+    {
+        return $this->request('v1/card/save', $params->toArray());
     }
 
     /**
