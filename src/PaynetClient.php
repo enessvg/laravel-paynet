@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Http;
 use Paynet\DTOs\{
     ChargeParams,
     CheckTransactionParams,
+    DeleteCardParams,
     MailOrderParams,
     PaymentParams,
     RatioParams,
@@ -137,6 +138,14 @@ class PaynetClient
     public function saveCard(SaveCardParams $params): Response
     {
         return $this->request('v1/card/save', $params->toArray());
+    }
+
+    /**
+     * Saklanmis karti sil
+     */
+    public function deleteCard(DeleteCardParams $params): Response
+    {
+        return $this->request('v1/card/delete', $params->toArray());
     }
 
     /**
