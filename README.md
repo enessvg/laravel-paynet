@@ -248,6 +248,124 @@ public function charge(Request $request)
 }
 ```
 
+### Kart Saklama
+
+#### saveCard
+
+```php
+use Paynet\Facades\Paynet;
+use Paynet\DTOs\SaveCardParams;
+
+$response = Paynet::saveCard(new SaveCardParams(
+    cardDesc: 'Kisisel Kartim',
+    cardHolder: 'John Doe',
+    cardNumber: '4355080000000000',
+    expireMonth: '12',
+    expireYear: '30',
+    cvv: '123',
+    userUniqueId: 'user-123',
+));
+
+$data = $response->json();
+
+if (($data['code'] ?? 1) === 0) {
+    $cardOwnerId = $data['card_owner_id'] ?? null;
+}
+```
+
+#### listCards
+
+```php
+use Paynet\Facades\Paynet;
+use Paynet\DTOs\CardListParams;
+
+$response = Paynet::listCards(new CardListParams(
+    cardOwnerId: 'abc45adc20-91ba-4a29-a599-0eb18177247e',
+    limit: 10,
+));
+
+$data = $response->json();
+
+if (($data['code'] ?? 1) === 0) {
+    $cards = $data['Data'] ?? [];
+}
+```
+
+#### updateCardDescription
+
+```php
+use Paynet\Facades\Paynet;
+use Paynet\DTOs\CardDescUpdateParams;
+
+$response = Paynet::updateCardDescription(new CardDescUpdateParams(
+    cardOwnerId: 'abc45adc20-91ba-4a29-a599-0eb18177247e',
+    cardHash: 'abcdef-8014-435e-8bcc-daf4592f3431',
+    cardDesc: 'Yeni Kart Aciklamasi',
+));
+
+$data = $response->json();
+
+if (($data['code'] ?? 1) === 0) {
+    $message = $data['message'] ?? 'Basarili Islem';
+}
+```
+
+#### deleteCard
+
+```php
+use Paynet\Facades\Paynet;
+use Paynet\DTOs\DeleteCardParams;
+
+$response = Paynet::deleteCard(new DeleteCardParams(
+    cardOwnerId: 'abc45adc20-91ba-4a29-a599-0eb18177247e',
+    cardHash: 'abcdef-8014-435e-8bcc-daf4592f3431',
+));
+
+$data = $response->json();
+
+if (($data['code'] ?? 1) === 0) {
+    $message = $data['message'] ?? 'Basarili Islem';
+}
+
+```
+
+#### Saklı Kart - OTP Gönderme
+
+```php
+$params = new SavedCardOtpParams(
+    userGsm: '...',
+    otpSessionId: '...'
+);
+
+$response = Paynet::sendOtpForSavedCard($params);
+
+$data = $response->json();
+
+if (($data['code'] ?? 1) === 0) {
+    $message = $data['message'] ?? 'Basarili Islem';
+}
+
+```
+
+#### Saklı Kart - OTP Kontrol
+
+```php
+$params = new SavedCardOtpCheckParams(
+    userGsm: '...',
+    otpSessionId: '...',
+    otpCode: '...'
+)
+
+$response = Paynet::checkOtpForSavedCard($params);
+
+$data = $response->json();
+
+if (($data['code'] ?? 1) === 0) {
+    $message = $data['message'] ?? 'Basarili Islem';
+}
+
+```
+
 ## Yardımcı Fonksiyonlar
 
 ```php
