@@ -16,9 +16,9 @@ class PaynetToolsTest extends TestCase
 
     public function test_format_without_decimal_separator(): void
     {
-        $this->assertEquals(12345, PaynetTools::formatWithoutDecimalSeparator(123.45));
-        $this->assertEquals(10000, PaynetTools::formatWithoutDecimalSeparator(100));
-        $this->assertEquals(99, PaynetTools::formatWithoutDecimalSeparator(0.99));
+        $this->assertSame('12345', PaynetTools::formatWithoutDecimalSeparator(123.45));
+        $this->assertSame('10000', PaynetTools::formatWithoutDecimalSeparator(100));
+        $this->assertSame('99', PaynetTools::formatWithoutDecimalSeparator(0.99));
     }
 
     public function test_validate_card_number_with_valid_card(): void

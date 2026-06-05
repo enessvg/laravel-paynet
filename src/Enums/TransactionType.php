@@ -8,8 +8,7 @@ namespace Paynet\Enums;
 enum TransactionType: int
 {
     case Sale = 1;           // Satış
-    case Preauth = 2;        // Ön provizyon
-    case PostAuth = 3;       // Ön provizyon kapama
+    case PreAuth = 3;        // Ön provizyon
     case Refund = 4;         // İade
     case Cancel = 5;         // İptal
 
@@ -17,8 +16,7 @@ enum TransactionType: int
     {
         return match($this) {
             self::Sale => 'Satış',
-            self::Preauth => 'Ön Provizyon',
-            self::PostAuth => 'Ön Provizyon Kapama',
+            self::PreAuth => 'Ön Provizyon',
             self::Refund => 'İade',
             self::Cancel => 'İptal',
         };

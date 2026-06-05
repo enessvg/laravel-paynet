@@ -4,25 +4,20 @@ namespace Paynet\DTOs;
 
 use Paynet\DTOs\Concerns\ValidatesPaynetParams;
 
-class ReversedRequestParams
+class TransactionIdParams
 {
     use ValidatesPaynetParams;
 
     public function __construct(
         public string $xactId,
-        public ?string $amount = null,
-        public ?string $succeedUrl = null,
     ) {}
 
     public function toArray(): array
     {
         $this->requireNonEmpty('xactId', $this->xactId);
-        $this->validateMinorUnitAmount('amount', $this->amount);
 
-        return $this->filterPayload([
+        return [
             'xact_id' => $this->xactId,
-            'amount' => $this->amount,
-            'succeedUrl' => $this->succeedUrl,
-        ]);
+        ];
     }
 }

@@ -2,10 +2,14 @@
 
 namespace Paynet\DTOs;
 
+use InvalidArgumentException;
+use Paynet\DTOs\Concerns\ValidatesPaynetParams;
 use Paynet\Enums\TransactionType;
 
 class TdsInitialParams
 {
+    use ValidatesPaynetParams;
+
     public function __construct(
         public string $amount,
         public string $referenceNo,
@@ -47,6 +51,8 @@ class TdsInitialParams
 
     public function toArray(): array
     {
+        $this->validate();
+
         return array_filter([
             'amount' => $this->amount,
             'reference_no' => $this->referenceNo,
@@ -85,5 +91,35 @@ class TdsInitialParams
             'invoice_no' => $this->invoiceNo,
             'transaction_type' => $this->transactionType?->value,
         ], fn($value) => $value !== null && $value !== '');
+    }
+
+    private function validate(): void
+    {
+        foreach ([
+            'amount' => $this->amount,
+            'referenceNo' => $this->referenceNo,
+            'returnUrl' => $this->returnUrl,
+            'domain' => $this->domain,
+        ] as $field => $value) {
+            $this->requireNonEmpty($field, $value);
+        }
+
+        $this->validateCommaDecimalAmount('amount', $this->amount);
+        $this->validateCommaDecimalAmount('companyAmount', $this->companyAmount);
+
+        $hasSavedCard = $this->isFilled($this->cardHash);
+        $hasCardDetails = $this->isFilled($this->pan)
+            && $this->isFilled($this->month)
+            && $this->isFilled($this->year)
+            && $this->isFilled($this->cvc)
+            && $this->isFilled($this->cardHolder);
+
+        if (!$hasSavedCard && !$hasCardDetails) {
+            throw new InvalidArgumentException('Kart bilgileri veya cardHash zorunludur.');
+        }
+
+        if ($this->saveCard && (!$this->isFilled($this->cardDesc) || (!$this->isFilled($this->cardOwnerId) && !$this->isFilled($this->userUniqueId)))) {
+            throw new InvalidArgumentException('Kart saklama icin cardDesc ve cardOwnerId veya userUniqueId zorunludur.');
+        }
     }
 }

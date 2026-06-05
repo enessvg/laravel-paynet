@@ -1,438 +1,267 @@
 # Laravel Paynet
 
-Paynet Payment Gateway için Laravel paketi. PHP 8.2+ ve Laravel 10/11/12 uyumlu.
+Paynet Payment Gateway icin Laravel SDK. PHP 8.2+ ve Laravel 10/11/12 ile uyumludur.
 
 ## Kurulum
 
 ```bash
 composer require enessvg/laravel-paynet
-```
-
-## Yapılandırma
-
-Config dosyasını yayınlayın:
-
-```bash
 php artisan vendor:publish --tag=paynet-config
 ```
 
-`.env` dosyanıza aşağıdaki değişkenleri ekleyin:
+`.env`:
 
 ```env
 PAYNET_SECRET_KEY=your_secret_key_here
 PAYNET_PUBLIC_KEY=your_public_key_here
 PAYNET_IS_LIVE=false
+PAYNET_TIMEOUT=30
+PAYNET_VERIFY_SSL=true
 PAYNET_TDS_RETURN_URL=https://your-domain.com/payment/callback
 ```
 
-## Kullanım
+## Response Kullanimi
 
-### Facade ile Kullanım
+Tum client methodlari SDK response objesi dondurur. Laravel HTTP response gerekiyorsa `raw()` ile erisebilirsiniz.
 
 ```php
-use Paynet\Facades\Paynet;
+$result->successful();     // Tahsilat/operasyon basarili mi?
+$result->failed();         // Basarisiz mi?
+$result->apiSuccessful();  // Paynet code 0 veya 100 mu?
+$result->errorMessage();   // Banka/Paynet hata mesaji
+$result->get('xact_id');   // Ham response alanina erisim
+$result->toArray();        // Ham body array
+$result->raw();            // Illuminate\Http\Client\Response|null
+```
+
+Odeme benzeri response'larda `successful()` sadece `is_succeed=true` ve Paynet sonuc kodu `0` veya `100` ise true doner. Yani HTTP 200 veya `code=0` tek basina tahsilat basarisi sayilmaz.
+
+## Direkt Odeme
+
+```php
 use Paynet\DTOs\PaymentParams;
+use Paynet\Facades\Paynet;
 use Paynet\Support\PaynetTools;
 
-// Direkt ödeme (3D Secure olmadan)
-$params = new PaymentParams(
+$result = Paynet::payment(new PaymentParams(
     amount: PaynetTools::formatWithDecimalSeparator(123.45),
     referenceNo: PaynetTools::generateReferenceNo('ORD-'),
     domain: 'www.acme.com',
     pan: '5400617004770430',
     month: '12',
-    year: '25',
+    year: '2030',
     cvc: '123',
     cardHolder: 'John Doe',
-    instalment: 1,
-);
+));
 
-$result = Paynet::payment($params);
-
-if ($result->code === 0) {
-    // Ödeme başarılı
+if ($result->successful()) {
     $transactionId = $result->xactId;
-} else {
-    // Hata
-    $errorMessage = $result->bankErrorMessage ?? $result->message;
+}
+
+if ($result->failed()) {
+    $message = $result->errorMessage();
 }
 ```
 
-### Dependency Injection ile Kullanım
+Sakli kart ile odeme:
 
 ```php
-use Paynet\PaynetClient;
-use Paynet\DTOs\PaymentParams;
-
-class PaymentController extends Controller
-{
-    public function __construct(
-        private readonly PaynetClient $paynet
-    ) {}
-
-    public function processPayment(Request $request)
-    {
-        $params = new PaymentParams(
-            amount: '123,45',
-            referenceNo: PaynetTools::generateReferenceNo('ORD-'),
-            domain: 'www.acme.com',
-            pan: $request->card_number,
-            month: $request->expire_month,
-            year: $request->expire_year,
-            cvc: $request->cvc,
-            cardHolder: $request->card_holder,
-        );
-
-        return $this->paynet->payment($params);
-    }
-}
-```
-
-### 3D Secure Ödeme
-
-```php
-use Paynet\Facades\Paynet;
-use Paynet\DTOs\TdsInitialParams;
-use Paynet\DTOs\TdsChargeParams;
-use Paynet\Enums\ResultCode;
-
-// Adım 1: 3D Secure başlat
-$params = new TdsInitialParams(
+$result = Paynet::payment(new PaymentParams(
     amount: '123,45',
-    referenceNo: PaynetTools::generateReferenceNo('ORD-'),
+    referenceNo: 'ORD-1001',
     domain: 'www.acme.com',
-    returnUrl: config('paynet.tds_return_url'),
+    cardHash: 'saved-card-token',
+));
+```
+
+## 3D Odeme
+
+```php
+use Paynet\DTOs\TdsChargeParams;
+use Paynet\DTOs\TdsInitialParams;
+use Paynet\Facades\Paynet;
+
+$initial = Paynet::tdsInitial(new TdsInitialParams(
+    amount: '123,45',
+    referenceNo: 'ORD-1002',
+    returnUrl: route('payment.callback'),
+    domain: 'www.acme.com',
     pan: '5400617004770430',
     month: '12',
-    year: '25',
+    year: '2030',
     cvc: '123',
     cardHolder: 'John Doe',
-);
+));
 
-$result = Paynet::tdsInitial($params);
-
-if ($result->code === ResultCode::Successful) {
-    // Session'a kaydet
-    session(['paynet_session_id' => $result->sessionId]);
-    session(['paynet_token_id' => $result->tokenId]);
-    
-    // 3D sayfasına yönlendir
-    return redirect($result->postUrl);
+if ($initial->successful()) {
+    return redirect($initial->postUrl);
 }
 
-// Adım 2: Callback'de ödemeyi onayla
-public function callback(Request $request)
-{
-    $params = new TdsChargeParams(
-        sessionId: $request->paynet_session_id,
-        tokenId: $request->paynet_token_id,
-    );
+// Callback icinde Paynet'in post ettigi/session'da saklanan degerlerle:
+$charge = Paynet::tdsCharge(new TdsChargeParams(
+    sessionId: request('session_id'),
+    tokenId: request('token_id'),
+));
 
-    $result = Paynet::tdsCharge($params);
-
-    if ($result->isSucceed) {
-        return view('payment.success', ['transaction' => $result]);
-    }
-
-    return view('payment.error', ['error' => $result->bankErrorMessage]);
+if ($charge->successful()) {
+    $transactionId = $charge->xactId;
 }
 ```
 
-### Taksit/Oran Sorgulama
+## Odeme Dogrulama
+
+Odeme cevabini aldiktan sonra tek helper ile Paynet sorgusu uzerinden dogrulayabilirsiniz.
 
 ```php
-use Paynet\Facades\Paynet;
+$verification = Paynet::verifyPayment(
+    referenceNo: 'ORD-1001',
+    expectedAmount: '123,45',
+    expectedCurrency: 'TRY',
+    expectedReferenceNo: 'ORD-1001',
+);
+
+if ($verification->successful()) {
+    $transaction = $verification->transaction;
+}
+```
+
+## Oran/Taksit
+
+```php
 use Paynet\DTOs\RatioParams;
-
-$params = new RatioParams(
-    amount: '1000,00',
-    bin: '540061', // Kartın ilk 6 hanesi (opsiyonel)
-);
-
-$result = Paynet::getRatios($params);
-
-if ($result->code === 0 && isset($result->banks)) {
-    foreach ($result->banks as $bank) {
-        echo "Banka: {$bank->bankName}\n";
-        foreach ($bank->ratios as $ratio) {
-            echo "  {$ratio->instalment} Taksit: %{$ratio->ratio}\n";
-        }
-    }
-    // Veya HTML tablo olarak
-    // echo $result->toHtmlTable();
-} else {
-    echo $result->message;
-}
-```
-
-### İşlem Sorgulama
-
-```php
 use Paynet\Facades\Paynet;
-use Paynet\DTOs\CheckTransactionParams;
 
-$result = Paynet::checkTransaction(new CheckTransactionParams(
-    xactId: '12345678',
+$ratios = Paynet::getRatios(new RatioParams(
+    amount: '100000',
+    bin: '540061',
+    addCommissionToAmount: true,
+    agentId: '1001',
+    cardType: 'cc',
 ));
 
-// veya referans numarası ile
-$result = Paynet::checkTransaction(new CheckTransactionParams(
-    referenceNo: 'ORD-12345',
-));
-
-if ($result->isSucceed) {
-    echo "İşlem durumu: Başarılı";
-    echo "Tutar: {$result->amount}";
-}
-```
-
-### Mail/SMS ile Ödeme Linki
-
-```php
-use Paynet\Facades\Paynet;
-use Paynet\DTOs\MailOrderParams;
-
-$params = new MailOrderParams(
-    amount: '500,00',
-    nameSurname: 'Ahmet Yılmaz',
-    userName: 'ahmet@example.com',
-    email: 'ahmet@example.com',
-    sendMail: true,
-    phone: '05551234567',
-    sendSms: true,
-    expireDate: 24, // 24 saat geçerli
-    succeedUrl: route('payment.success'),
-    errorUrl: route('payment.error'),
-);
-
-$result = Paynet::createMailOrder($params);
-
-if ($result->isSuccessful()) {
-    $paymentUrl = $result->url;
-}
-```
-
-### Paynet JS Widget ile Kullanım (v1)
-
-```php
-// Blade view
-<form action="{{ route('payment.charge') }}" method="post" id="checkout-form">
-    @csrf
-    <script type="text/javascript"
-        class="paynet-button"
-        src="https://pts-pj.paynet.com.tr/public/js/paynet.js"
-        data-key="{{ config('paynet.public_key') }}"
-        data-description="Ödemenizi tamamlamak için bilgileri girip tamam butonuna basınız"
-        data-amount="{{ \Paynet\Support\PaynetTools::formatWithoutDecimalSeparator($amount) }}"
-        data-button_label="Ödemeyi Tamamla"
-        data-pos_type="5">
-    </script>
-</form>
-
-// Controller
-use Paynet\Facades\Paynet;
-use Paynet\DTOs\ChargeParams;
-use Paynet\Support\PaynetTools;
-
-public function charge(Request $request)
-{
-    $params = new ChargeParams(
-        sessionId: $request->session_id,
-        tokenId: $request->token_id,
-        amount: (string) PaynetTools::formatWithoutDecimalSeparator(session('amount')),
-    );
-
-    $result = Paynet::charge($params);
-
-    if ($result->isSucceed) {
-        return redirect()->route('payment.success');
+foreach ($ratios->banks as $bank) {
+    foreach ($bank->ratios as $ratio) {
+        echo "{$bank->bankName}: {$ratio->instalment} taksit\n";
     }
-
-    return back()->withErrors(['payment' => $result->bankErrorMessage]);
 }
 ```
 
-### Kart Saklama
-
-#### saveCard
+Public oran, oran tipi ve oran tanimlari:
 
 ```php
-use Paynet\Facades\Paynet;
+use Paynet\DTOs\RatioCodeParams;
+use Paynet\DTOs\RatioDefinitionParams;
+use Paynet\DTOs\RatioTypeParams;
+
+Paynet::getPublicRatios(new RatioParams(bin: '540061'));
+Paynet::setRatioType(new RatioTypeParams(description: 'API oran'));
+Paynet::deleteRatioType(new RatioCodeParams(ratioCode: 'RATIO1'));
+Paynet::defineRatio(new RatioDefinitionParams(
+    ratioCode: 'RATIO1',
+    cardType: 'cc',
+    banks: [
+        [
+            'bank_id' => 'DENZ',
+            'instalments' => [
+                ['instalment' => 0, 'ratio' => 0.1],
+            ],
+        ],
+    ],
+));
+```
+
+## Kart Saklama
+
+```php
+use Paynet\DTOs\CardDescUpdateParams;
+use Paynet\DTOs\CardListParams;
+use Paynet\DTOs\DeleteCardParams;
 use Paynet\DTOs\SaveCardParams;
+use Paynet\DTOs\SavedCardOtpCheckParams;
+use Paynet\DTOs\SavedCardOtpParams;
+use Paynet\Facades\Paynet;
 
-$response = Paynet::saveCard(new SaveCardParams(
+$save = Paynet::saveCard(new SaveCardParams(
     cardDesc: 'Kisisel Kartim',
     cardHolder: 'John Doe',
     cardNumber: '4355080000000000',
     expireMonth: '12',
-    expireYear: '30',
+    expireYear: '2030',
     cvv: '123',
     userUniqueId: 'user-123',
 ));
 
-$data = $response->json();
+$cardOwnerId = $save->cardOwnerId;
 
-if (($data['code'] ?? 1) === 0) {
-    $cardOwnerId = $data['card_owner_id'] ?? null;
-}
-```
-
-#### listCards
-
-```php
-use Paynet\Facades\Paynet;
-use Paynet\DTOs\CardListParams;
-
-$response = Paynet::listCards(new CardListParams(
-    cardOwnerId: 'abc45adc20-91ba-4a29-a599-0eb18177247e',
-    limit: 10,
+$cards = Paynet::listCards(new CardListParams(
+    cardOwnerId: $cardOwnerId,
 ));
 
-$data = $response->json();
+$cardHash = $cards->cards[0]->cardHash;
 
-if (($data['code'] ?? 1) === 0) {
-    $cards = $data['Data'] ?? [];
-}
-```
-
-#### updateCardDescription
-
-```php
-use Paynet\Facades\Paynet;
-use Paynet\DTOs\CardDescUpdateParams;
-
-$response = Paynet::updateCardDescription(new CardDescUpdateParams(
-    cardOwnerId: 'abc45adc20-91ba-4a29-a599-0eb18177247e',
-    cardHash: 'abcdef-8014-435e-8bcc-daf4592f3431',
+Paynet::updateCardDescription(new CardDescUpdateParams(
+    cardOwnerId: $cardOwnerId,
+    cardHash: $cardHash,
     cardDesc: 'Yeni Kart Aciklamasi',
 ));
 
-$data = $response->json();
-
-if (($data['code'] ?? 1) === 0) {
-    $message = $data['message'] ?? 'Basarili Islem';
-}
-```
-
-#### deleteCard
-
-```php
-use Paynet\Facades\Paynet;
-use Paynet\DTOs\DeleteCardParams;
-
-$response = Paynet::deleteCard(new DeleteCardParams(
-    cardOwnerId: 'abc45adc20-91ba-4a29-a599-0eb18177247e',
-    cardHash: 'abcdef-8014-435e-8bcc-daf4592f3431',
+Paynet::deleteCard(new DeleteCardParams(
+    cardOwnerId: $cardOwnerId,
+    cardHash: $cardHash,
 ));
 
-$data = $response->json();
+$otp = Paynet::sendCardOtp(new SavedCardOtpParams(
+    userGsm: '5551234567',
+    otpSessionId: 'otp-session-id',
+));
 
-if (($data['code'] ?? 1) === 0) {
-    $message = $data['message'] ?? 'Basarili Islem';
-}
-
+Paynet::checkOtpForSavedCard(new SavedCardOtpCheckParams(
+    userGsm: '5551234567',
+    otpSessionId: 'otp-session-id',
+    otpCode: 'ART2',
+));
 ```
 
-#### Saklı Kart - OTP Gönderme
+## Iade ve Iptal
 
 ```php
-$params = new SavedCardOtpParams(
-    userGsm: '...',
-    otpSessionId: '...'
-);
+use Paynet\DTOs\ReversalListParams;
+use Paynet\DTOs\ReversedRequestParams;
+use Paynet\DTOs\TransactionIdParams;
+use Paynet\Facades\Paynet;
 
-$response = Paynet::sendOtpForSavedCard($params);
+Paynet::requestReversal(new ReversedRequestParams(
+    xactId: 'xk_...',
+    amount: '1000',
+));
 
-$data = $response->json();
+Paynet::listReversals(new ReversalListParams(
+    datab: '2026-01-01',
+    datbi: '2026-01-02',
+));
 
-if (($data['code'] ?? 1) === 0) {
-    $message = $data['message'] ?? 'Basarili Islem';
-}
-
+Paynet::cancelPreAuthorization(new TransactionIdParams(xactId: 'xk_...'));
+Paynet::cancelCapture(new TransactionIdParams(xactId: 'xk_...'));
 ```
 
-#### Saklı Kart - OTP Kontrol
-
-```php
-$params = new SavedCardOtpCheckParams(
-    userGsm: '...',
-    otpSessionId: '...',
-    otpCode: '...'
-)
-
-$response = Paynet::checkOtpForSavedCard($params);
-
-$data = $response->json();
-
-if (($data['code'] ?? 1) === 0) {
-    $message = $data['message'] ?? 'Basarili Islem';
-}
-
-```
-
-## Yardımcı Fonksiyonlar
+## Yardimci Fonksiyonlar
 
 ```php
 use Paynet\Support\PaynetTools;
 
-// Tutar formatlama
-$formatted = PaynetTools::formatWithDecimalSeparator(123.45); // "123,45"
-$cents = PaynetTools::formatWithoutDecimalSeparator(123.45);  // 12345
-
-// Kart doğrulama
-$isValid = PaynetTools::validateCardNumber('5400617004770430'); // true
-$isValidExpiry = PaynetTools::validateExpiryDate('12', '25');   // true
-$isValidCvc = PaynetTools::validateCvc('123');                  // true
-
-// Kart maskeleme
-$masked = PaynetTools::maskCardNumber('5400617004770430'); // "540061******0430"
-
-// BIN numarası
-$bin = PaynetTools::getCardBin('5400617004770430'); // "540061"
-
-// Benzersiz referans numarası
-$refNo = PaynetTools::generateReferenceNo('ORD-'); // "ORD-17082532451234"
+PaynetTools::formatWithDecimalSeparator(123.45);    // "123,45"
+PaynetTools::formatWithoutDecimalSeparator(123.45); // "12345"
+PaynetTools::validateCardNumber('5400617004770430');
+PaynetTools::validateExpiryDate('12', '2030');
+PaynetTools::validateCvc('123');
+PaynetTools::maskCardNumber('5400617004770430');    // "540061******0430"
+PaynetTools::getCardBin('5400617004770430');        // "540061"
+PaynetTools::generateReferenceNo('ORD-');
 ```
 
-## Enum Kullanımı
+## Test Kartlari
 
-```php
-use Paynet\Enums\ResultCode;
-use Paynet\Enums\TransactionType;
-
-// Sonuç kodu kontrolü
-if ($result->code === ResultCode::Successful) {
-    // Başarılı
-}
-
-// Açıklama alma
-$description = ResultCode::Successful->description(); // "İşlem başarılı"
-
-// İşlem tipi
-$params->transactionType = TransactionType::Sale;     // Satış
-$params->transactionType = TransactionType::Refund;   // İade
-```
-
-## Hata Yönetimi
-
-```php
-use Paynet\Exceptions\PaynetException;
-
-try {
-    $result = Paynet::payment($params);
-} catch (PaynetException $e) {
-    // Bağlantı veya yapılandırma hatası
-    Log::error('Paynet Error: ' . $e->getMessage(), [
-        'result_code' => $e->resultCode?->value,
-        'bank_error' => $e->bankErrorMessage,
-    ]);
-}
-```
-
-## Test Kartları
-Altta ki linkten detaylı bir şekilde ulaşabilirsiniz
-
-https://doc.paynet.com.tr/genel-bilgiler/test-kartlari
+Paynet test kartlari icin: https://doc.paynet.com.tr/genel-bilgiler/test-kartlari
 
 ## Lisans
 
