@@ -2,8 +2,12 @@
 
 namespace Paynet\DTOs;
 
+use Paynet\DTOs\Concerns\ValidatesPaynetParams;
+
 class SavedCardOtpParams
 {
+    use ValidatesPaynetParams;
+
     public function __construct(
         public string $userGsm,
         public string $otpSessionId,
@@ -11,9 +15,12 @@ class SavedCardOtpParams
 
     public function toArray(): array
     {
-        return array_filter([
+        $this->requireNonEmpty('userGsm', $this->userGsm);
+        $this->requireNonEmpty('otpSessionId', $this->otpSessionId);
+
+        return $this->filterPayload([
             'user_gsm' => $this->userGsm,
             'otp_session_id' => $this->otpSessionId,
-        ], fn($value) => $value !== null && $value !== '');
+        ]);
     }
 }

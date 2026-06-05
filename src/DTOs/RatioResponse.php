@@ -2,6 +2,7 @@
 
 namespace Paynet\DTOs;
 
+use Illuminate\Http\Client\Response;
 use Paynet\Enums\ResultCode;
 
 class RatioResponse extends BaseResponse
@@ -13,28 +14,38 @@ class RatioResponse extends BaseResponse
         ?string $objectName = null,
         ResultCode $code = ResultCode::Unsuccessful,
         ?string $message = null,
-        
+        public readonly ?bool $tdsRequired = null,
         public readonly array $banks = [],
+        array $data = [],
+        ?Response $rawResponse = null,
     ) {
-        parent::__construct($objectName, $code, $message);
+        parent::__construct($objectName, $code, $message, $data, $rawResponse);
     }
 
-    public static function fromJson(object $json): static
+    public static function fromArray(array $data, ?Response $rawResponse = null): static
     {
         $banks = [];
         
-        if (isset($json->data) && is_array($json->data)) {
-            foreach ($json->data as $bankData) {
+        if (isset($data['data']) && is_array($data['data'])) {
+            foreach ($data['data'] as $bankData) {
                 $banks[] = Bank::fromJson($bankData);
             }
         }
 
         return new static(
-            objectName: $json->object_name ?? null,
-            code: ResultCode::fromCode((int) ($json->code ?? 1)),
-            message: $json->message ?? null,
+            objectName: $data['object_name'] ?? null,
+            code: ResultCode::fromCode((int) ($data['result_code'] ?? $data['code'] ?? 1)),
+            message: $data['message'] ?? null,
+            tdsRequired: isset($data['tds_required']) ? (bool) $data['tds_required'] : null,
             banks: $banks,
+            data: $data,
+            rawResponse: $rawResponse,
         );
+    }
+
+    public static function fromJson(object $json): static
+    {
+        return static::fromArray(static::objectToArray($json));
     }
 
     /**
@@ -99,14 +110,17 @@ class Bank
      * @param Ratio[] $ratios
      */
     public function __construct(
-        public readonly ?int $bankId = null,
+        public readonly ?string $bankId = null,
         public readonly ?string $bankLogo = null,
         public readonly ?string $bankName = null,
+        public readonly ?string $cardType = null,
+        public readonly ?bool $tdsRequired = null,
         public readonly array $ratios = [],
     ) {}
 
-    public static function fromJson(object $json): self
+    public static function fromJson(object|array $json): self
     {
+        $json = is_array($json) ? (object) $json : $json;
         $ratios = [];
         
         if (isset($json->ratio) && is_array($json->ratio)) {
@@ -116,9 +130,11 @@ class Bank
         }
 
         return new self(
-            bankId: isset($json->bank_id) ? (int) $json->bank_id : null,
+            bankId: isset($json->bank_id) ? (string) $json->bank_id : null,
             bankLogo: $json->bank_logo ?? null,
             bankName: $json->bank_name ?? null,
+            cardType: $json->card_type ?? null,
+            tdsRequired: isset($json->tds_required) ? (bool) $json->tds_required : null,
             ratios: $ratios,
         );
     }
@@ -137,10 +153,16 @@ class Ratio
         public readonly ?string $commissionTax = null,
         public readonly ?string $desc = null,
         public readonly ?string $ratioCode = null,
+        public readonly ?bool $isHasCampaign = null,
+        public readonly ?int $plusInstallment = null,
+        public readonly ?int $postPone = null,
+        public readonly ?string $campaignNote = null,
     ) {}
 
-    public static function fromJson(object $json): self
+    public static function fromJson(object|array $json): self
     {
+        $json = is_array($json) ? (object) $json : $json;
+
         return new self(
             ratio: isset($json->ratio) ? (float) $json->ratio : null,
             instalmentKey: $json->instalment_key ?? null,
@@ -152,6 +174,10 @@ class Ratio
             commissionTax: $json->commision_tax ?? null,
             desc: $json->desc ?? null,
             ratioCode: $json->ratio_code ?? null,
+            isHasCampaign: isset($json->is_has_campaign) ? (bool) $json->is_has_campaign : null,
+            plusInstallment: isset($json->plus_installment) ? (int) $json->plus_installment : null,
+            postPone: isset($json->post_pone) ? (int) $json->post_pone : null,
+            campaignNote: $json->campaign_note ?? null,
         );
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Paynet\DTOs;
 
+use Illuminate\Http\Client\Response;
 use Paynet\Enums\ResultCode;
 
 class CheckTransactionResponse extends BaseResponse
@@ -17,7 +18,7 @@ class CheckTransactionResponse extends BaseResponse
         public readonly ?int $posType = null,
         public readonly ?string $agentId = null,
         public readonly ?bool $isTds = null,
-        public readonly ?int $bankId = null,
+        public readonly ?string $bankId = null,
         public readonly ?int $instalment = null,
         public readonly ?string $cardNo = null,
         public readonly ?string $cardHolder = null,
@@ -39,45 +40,59 @@ class CheckTransactionResponse extends BaseResponse
         public readonly ?string $phone = null,
         public readonly ?string $note = null,
         public readonly ?string $agentReference = null,
+        array $data = [],
+        ?Response $rawResponse = null,
     ) {
-        parent::__construct($objectName, $code, $message);
+        parent::__construct($objectName, $code, $message, $data, $rawResponse);
+    }
+
+    public function successful(): bool
+    {
+        return $this->apiSuccessful() && $this->isSucceed === true;
+    }
+
+    public static function fromArray(array $data, ?Response $rawResponse = null): static
+    {
+        return new static(
+            objectName: $data['object_name'] ?? null,
+            code: ResultCode::fromCode((int) ($data['result_code'] ?? $data['code'] ?? 1)),
+            message: $data['message'] ?? null,
+            
+            xactId: $data['xact_id'] ?? null,
+            xactDate: $data['xact_date'] ?? null,
+            transactionType: isset($data['transaction_type']) ? (int) $data['transaction_type'] : null,
+            posType: isset($data['pos_type']) ? (int) $data['pos_type'] : null,
+            agentId: $data['agent_id'] ?? null,
+            isTds: isset($data['is_tds']) ? (bool) $data['is_tds'] : null,
+            bankId: isset($data['bank_id']) ? (string) $data['bank_id'] : null,
+            instalment: isset($data['instalment']) ? (int) $data['instalment'] : null,
+            cardNo: $data['card_no'] ?? $data['cardno'] ?? null,
+            cardHolder: $data['card_holder'] ?? null,
+            cardType: $data['card_type'] ?? null,
+            ratio: isset($data['ratio']) ? (float) $data['ratio'] : null,
+            ratioCode: $data['ratio_code'] ?? null,
+            amount: isset($data['amount']) ? (string) $data['amount'] : null,
+            netAmount: isset($data['net_amount']) ? (string) $data['net_amount'] : null,
+            comission: isset($data['comission']) ? (string) $data['comission'] : null,
+            comissionTax: isset($data['comission_tax']) ? (string) $data['comission_tax'] : null,
+            endUserComission: isset($data['end_user_comission']) ? (string) $data['end_user_comission'] : null,
+            currency: $data['currency'] ?? null,
+            authorizationCode: $data['authorization_code'] ?? $data['authorizationcode'] ?? null,
+            referenceCode: $data['reference_code'] ?? $data['referencecode'] ?? null,
+            orderId: $data['order_id'] ?? null,
+            isSucceed: isset($data['is_succeed']) ? (bool) $data['is_succeed'] : null,
+            xactTransactionId: $data['xact_transaction_id'] ?? null,
+            email: $data['email'] ?? null,
+            phone: $data['phone'] ?? null,
+            note: $data['note'] ?? null,
+            agentReference: $data['agent_reference'] ?? $data['reference_no'] ?? null,
+            data: $data,
+            rawResponse: $rawResponse,
+        );
     }
 
     public static function fromJson(object $json): static
     {
-        return new static(
-            objectName: $json->object_name ?? null,
-            code: ResultCode::fromCode((int) ($json->code ?? 1)),
-            message: $json->message ?? null,
-            
-            xactId: $json->xact_id ?? null,
-            xactDate: $json->xact_date ?? null,
-            transactionType: isset($json->transaction_type) ? (int) $json->transaction_type : null,
-            posType: isset($json->pos_type) ? (int) $json->pos_type : null,
-            agentId: $json->agent_id ?? null,
-            isTds: isset($json->is_tds) ? (bool) $json->is_tds : null,
-            bankId: isset($json->bank_id) ? (int) $json->bank_id : null,
-            instalment: isset($json->instalment) ? (int) $json->instalment : null,
-            cardNo: $json->card_no ?? null,
-            cardHolder: $json->card_holder ?? null,
-            cardType: $json->card_type ?? null,
-            ratio: isset($json->ratio) ? (float) $json->ratio : null,
-            ratioCode: $json->ratio_code ?? null,
-            amount: $json->amount ?? null,
-            netAmount: $json->netAmount ?? null,
-            comission: $json->comission ?? null,
-            comissionTax: $json->comission_tax ?? null,
-            endUserComission: $json->end_user_comission ?? null,
-            currency: $json->currency ?? null,
-            authorizationCode: $json->authorization_code ?? null,
-            referenceCode: $json->reference_code ?? null,
-            orderId: $json->order_id ?? null,
-            isSucceed: isset($json->is_succeed) ? (bool) $json->is_succeed : null,
-            xactTransactionId: $json->xact_transaction_id ?? null,
-            email: $json->email ?? null,
-            phone: $json->phone ?? null,
-            note: $json->note ?? null,
-            agentReference: $json->agent_reference ?? null,
-        );
+        return static::fromArray(static::objectToArray($json));
     }
 }

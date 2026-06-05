@@ -2,6 +2,7 @@
 
 namespace Paynet\DTOs;
 
+use Illuminate\Http\Client\Response;
 use Paynet\Enums\ResultCode;
 
 class TdsChargeResponse extends PaymentResponse
@@ -28,7 +29,7 @@ class TdsChargeResponse extends PaymentResponse
         ?string $comission = null,
         ?string $comissionTax = null,
         ?string $currency = null,
-        ?int $bankId = null,
+        ?string $bankId = null,
         ?string $bankName = null,
         ?string $bankAuthorizationCode = null,
         ?string $bankReferenceCode = null,
@@ -59,8 +60,10 @@ class TdsChargeResponse extends PaymentResponse
         ?string $cardOwnerId = null,
         ?string $userUniqueId = null,
         ?string $cardHash = null,
-        ?int $cardBankId = null,
+        ?string $cardBankId = null,
         ?string $cardLogoUrl = null,
+        array $data = [],
+        ?Response $rawResponse = null,
         
         // TDS specific fields
         public readonly ?bool $isTds = null,
@@ -77,13 +80,13 @@ class TdsChargeResponse extends PaymentResponse
             $ratioCodeMethod, $cardBrandName, $cardType, $plusInstallment, $companyCostRatio,
             $companyCommission, $companyCommissionWithTax, $companyNetAmount,
             $isSaveCardSucceed, $saveCardResultMessage, $cardOwnerId, $userUniqueId,
-            $cardHash, $cardBankId, $cardLogoUrl
+            $cardHash, $cardBankId, $cardLogoUrl, $data, $rawResponse
         );
     }
 
-    public static function fromJson(object $json): static
+    public static function fromArray(array $data, ?Response $rawResponse = null): static
     {
-        $parent = PaymentResponse::fromJson($json);
+        $parent = PaymentResponse::fromArray($data, $rawResponse);
         
         return new static(
             objectName: $parent->objectName,
@@ -140,9 +143,16 @@ class TdsChargeResponse extends PaymentResponse
             cardHash: $parent->cardHash,
             cardBankId: $parent->cardBankId,
             cardLogoUrl: $parent->cardLogoUrl,
+            data: $data,
+            rawResponse: $rawResponse,
             
-            isTds: $json->is_tds ?? null,
-            mdStatus: $json->md_status ?? null,
+            isTds: isset($data['is_tds']) ? (bool) $data['is_tds'] : null,
+            mdStatus: isset($data['md_status']) ? (string) $data['md_status'] : null,
         );
+    }
+
+    public static function fromJson(object $json): static
+    {
+        return static::fromArray(static::objectToArray($json));
     }
 }

@@ -25,13 +25,13 @@ class PaynetTools
      * 
      * @throws PaynetException
      */
-    public static function formatWithoutDecimalSeparator(float|int|string $amount): int
+    public static function formatWithoutDecimalSeparator(float|int|string $amount): string
     {
         if (!is_numeric($amount)) {
             throw PaynetException::configurationError('Tutar sayısal değer olmalı.');
         }
 
-        return (int) round((float) $amount * 100);
+        return (string) ((int) round((float) $amount * 100));
     }
 
     /**
