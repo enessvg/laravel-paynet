@@ -1,6 +1,6 @@
 # Laravel Paynet
 
-Paynet Payment Gateway icin Laravel SDK. PHP 8.2+ ve Laravel 10/11/12 ile uyumludur.
+Paynet Payment Gateway için Laravel SDK. PHP 8.2+ sürümlerini ve Laravel 10, 11, 12 ve 13 sürümlerini destekler.
 
 ## Kurulum
 
